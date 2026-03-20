@@ -446,6 +446,8 @@ body.role-admin .nav-admin{display:inline-flex;}
       </div>
       <button class="btn btn-dark" style="padding:5px 12px;font-size:12px;" onclick="doLogout()">Sign Out</button>
       <span id="saveBadge" style="font-size:10px;color:var(--tx3);white-space:nowrap;padding:0 4px;">Not saved</span>
+      <button class="btn btn-dark" style="padding:4px 10px;font-size:11px;color:#7ecbb8;" onclick="exportData()" title="Export all data to a file you can import on another device">⬇ Export</button>
+      <label class="btn btn-dark" style="padding:4px 10px;font-size:11px;color:#7db8e0;cursor:pointer;" title="Import data exported from another device">⬆ Import<input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importData(this)"/></label>
       <button class="btn btn-dark" style="padding:4px 10px;font-size:11px;color:#e87c6e;" onclick="clearStorage()" title="Reset all data to demo defaults">🗑 Reset</button>
     </div>
   </div>
@@ -3339,6 +3341,91 @@ function clearStorage(){
   localStorage.removeItem(COURSES_KEY);
   toast('Data cleared — reloading…','warn');
   setTimeout(()=>location.reload(), 1200);
+}
+
+// ── EXPORT: download all data as a .json file ──
+function exportData(){
+  try{
+    const state={
+      students, enrollments, examResults,
+      teachers, sessions, studyPlans, adminOverrides,
+      exportedAt: new Date().toISOString(),
+      version: 'dsu_portal_v1'
+    };
+    // Also include course enrolled counts
+    const enrolledMap={};
+    courses.forEach(c=>{ enrolledMap[c.id]=c.enrolled; });
+    state.enrolledMap=enrolledMap;
+
+    const json=JSON.stringify(state,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    const date=new Date().toLocaleDateString('en-GB').replace(/\//g,'-');
+    a.download=`DSU_Portal_Backup_${date}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Data exported! Share the .json file with your other device.','ok');
+  }catch(e){
+    toast('Export failed: '+e.message,'err');
+  }
+}
+
+// ── IMPORT: restore data from an exported .json file ──
+function importData(input){
+  const file=input.files[0];
+  if(!file){return;}
+  input.value=''; // reset so same file can be re-imported
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const state=JSON.parse(e.target.result);
+      // Validate it's a DSU export
+      if(!state.version||!state.students||!state.enrollments){
+        toast('Invalid file — please use a DSU Portal export file.','err');
+        return;
+      }
+      if(!confirm(
+        'Import data from backup dated '+new Date(state.exportedAt).toLocaleString()+'?\n\n'+
+        '• '+state.students.length+' students\n'+
+        '• '+state.enrollments.length+' enrollments\n'+
+        '• '+state.examResults.length+' exam results\n'+
+        '• '+state.teachers.length+' faculty members\n\n'+
+        'This will REPLACE all current data. Continue?'
+      )){return;}
+
+      // Restore arrays
+      students.length=0;     state.students.forEach(x=>students.push(x));
+      enrollments.length=0;  state.enrollments.forEach(x=>enrollments.push(x));
+      examResults.length=0;  state.examResults.forEach(x=>examResults.push(x));
+      teachers.length=0;     state.teachers.forEach(x=>teachers.push(x));
+      sessions.length=0;     state.sessions.forEach(x=>sessions.push(x));
+      studyPlans.length=0;   state.studyPlans.forEach(x=>studyPlans.push(x));
+      adminOverrides.length=0; (state.adminOverrides||[]).forEach(x=>adminOverrides.push(x));
+
+      // Restore enrolled counts on courses
+      if(state.enrolledMap){
+        courses.forEach(c=>{
+          if(state.enrolledMap[c.id]!==undefined) c.enrolled=state.enrolledMap[c.id];
+        });
+      }
+
+      // Save to localStorage so it persists on this device too
+      saveToStorage();
+      updateSaveBadge();
+
+      // Re-render everything
+      renderHome();
+      renderCourses();
+      if(activeId&&students.find(x=>x.id===activeId)) renderPortal();
+      else{ activeId=null; document.getElementById('portalContent').style.display='none'; document.getElementById('portalEmpty').style.display=''; }
+
+      toast('✓ Data imported successfully! '+state.students.length+' students, '+state.teachers.length+' faculty loaded.','ok');
+    }catch(err){
+      toast('Import failed: '+err.message,'err');
+    }
+  };
+  reader.readAsText(file);
 }
 
 // Show save status badge in nav
