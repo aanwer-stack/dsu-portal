@@ -641,7 +641,6 @@ body.role-admin .nav-admin{display:inline-flex;}
       <div class="i-tabs" style="flex-wrap:wrap;">
         <button class="i-tab active" onclick="showPTab('enrolled',this)">📚 My Courses</button>
         <button class="i-tab" onclick="showPTab('enroll-self',this)">➕ Enroll</button>
-        <button class="i-tab" onclick="showPTab('marks-entry',this)">📝 Enter Numbers</button>
         <button class="i-tab" onclick="showPTab('results',this)">📊 My Marks</button>
         <button class="i-tab" onclick="showPTab('completed',this)">✅ Completed</button>
         <button class="i-tab" onclick="showPTab('plan',this)">🗓 Study Plan</button>
@@ -651,7 +650,6 @@ body.role-admin .nav-admin{display:inline-flex;}
 
       <div id="pt-enrolled"></div>
       <div id="pt-enroll-self" style="display:none;"></div>
-      <div id="pt-marks-entry" style="display:none;"></div>
       <div id="pt-results" style="display:none;"></div>
       <div id="pt-completed" style="display:none;"></div>
       <div id="pt-plan" style="display:none;"></div>
@@ -1252,7 +1250,7 @@ function showATab(t,btn){
   if(t==='imports')initImportsTab();
 }
 function showPTab(t,btn){
-  ['enrolled','enroll-self','marks-entry','results','completed','plan','transcript','progress','contact'].forEach(x=>{const e=document.getElementById('pt-'+x);if(e)e.style.display='none';});
+  ['enrolled','enroll-self','results','completed','plan','transcript','progress','contact'].forEach(x=>{const e=document.getElementById('pt-'+x);if(e)e.style.display='none';});
   const target=document.getElementById('pt-'+t);
   if(target)target.style.display='';
   document.querySelectorAll('#page-portal .i-tab').forEach(b=>b.classList.remove('active'));
@@ -1788,61 +1786,7 @@ function renderPTab(tab){
     return;
   }
 
-  // ── ENTER NUMBERS (student self-assessment) ──
-  if(tab==='marks-entry'){
-    const el=document.getElementById('pt-marks-entry');
-    const myEnr=enrollments.filter(function(e){return e.studentId===s.id&&e.status==='active';});
-    if(!myEnr.length){el.innerHTML='<div class="empty-state"><div class="empty-ico">📝</div><div class="empty-txt">No active courses. Enroll in courses first.</div></div>';return;}
-    if(!window.studentMarks)window.studentMarks={};
-    let rows='';
-    myEnr.forEach(function(e){
-      const c=courses.find(function(x){return x.id===e.courseId;});
-      const key=s.id+'_'+e.courseId;
-      const saved=window.studentMarks[key]||{};
-      const official=examResults.filter(function(r){return r.studentId===s.id&&r.courseId===e.courseId;});
-      const latest=official[official.length-1];
-      if(latest){
-        rows+='<tr style="opacity:.65;">'
-          +'<td><strong>'+(c?c.title:e.courseId)+'</strong><br/><span style="font-size:10px;color:var(--tx3);">Official result posted</span></td>'
-          +'<td><span class="code-badge">'+e.courseId+'</span></td>'
-          +'<td style="font-size:12px;color:var(--tx2);">'+(c?c.instructor:'—')+'</td>'
-          +'<td style="text-align:center;color:#f5c060;font-weight:700;">'+latest.sessional+'</td>'
-          +'<td style="text-align:center;color:#7db8e0;font-weight:700;">'+latest.midterm+'</td>'
-          +'<td style="text-align:center;color:#7ecbb8;font-weight:700;">'+latest.final+'</td>'
-          +'<td style="text-align:center;font-weight:700;">'+latest.total+'</td>'
-          +'<td style="text-align:center;font-weight:800;color:'+(latest.status==='pass'?'#7ecbb8':'#e87c6e')+';">'+latest.grade+'</td>'
-          +'<td><span style="font-size:11px;color:var(--tx3);">Official</span></td>'
-          +'</tr>';
-      } else {
-        const hasSaved=saved.s!==undefined;
-        const tot=hasSaved?(Math.min(+(saved.s||0),40)+Math.min(+(saved.m||0),20)+Math.min(+(saved.f||0),40)):0;
-        const g=hasSaved?calcGrade(tot):null;
-        rows+='<tr>'
-          +'<td><strong>'+(c?c.title:e.courseId)+'</strong></td>'
-          +'<td><span class="code-badge">'+e.courseId+'</span></td>'
-          +'<td style="font-size:12px;color:var(--tx2);">'+(c?c.instructor:'—')+'</td>'
-          +'<td style="text-align:center;"><input type="number" id="sm_s_'+e.courseId+'" min="0" max="40" value="'+(saved.s!==undefined?saved.s:'')+'" placeholder="0–40" style="width:60px;padding:5px 8px;font-size:12px;text-align:center;border-color:rgba(245,192,96,.3);" oninput="previewStudentTotal(\''+e.courseId+'\')"/></td>'
-          +'<td style="text-align:center;"><input type="number" id="sm_m_'+e.courseId+'" min="0" max="20" value="'+(saved.m!==undefined?saved.m:'')+'" placeholder="0–20" style="width:55px;padding:5px 8px;font-size:12px;text-align:center;border-color:rgba(125,184,224,.3);" oninput="previewStudentTotal(\''+e.courseId+'\')"/></td>'
-          +'<td style="text-align:center;"><input type="number" id="sm_f_'+e.courseId+'" min="0" max="40" value="'+(saved.f!==undefined?saved.f:'')+'" placeholder="0–40" style="width:60px;padding:5px 8px;font-size:12px;text-align:center;border-color:rgba(126,203,184,.3);" oninput="previewStudentTotal(\''+e.courseId+'\')"/></td>'
-          +'<td style="text-align:center;"><span id="sm_tot_'+e.courseId+'" style="font-weight:700;font-size:15px;color:'+(g?(g.gp>=1?'#7ecbb8':'#e87c6e'):'var(--tx3)')+';">'+(g?tot:'—')+'</span></td>'
-          +'<td style="text-align:center;"><span id="sm_grade_'+e.courseId+'" style="font-weight:800;font-size:16px;color:'+(g?(g.gp>=1?'#7ecbb8':'#e87c6e'):'var(--tx3)')+';">'+(g?g.grade:'—')+'</span></td>'
-          +'<td><button class="btn btn-amber btn-xs" onclick="saveStudentMarks(\''+s.id+'\',\''+e.courseId+'\')">Save</button>'
-          +(hasSaved?'<br/><button class="btn btn-dark btn-xs" style="margin-top:4px;" onclick="clearStudentMarks(\''+s.id+'\',\''+e.courseId+'\')">Clear</button>':'')
-          +'</td></tr>';
-      }
-    });
-    el.innerHTML='<div class="alert alert-i" style="margin-bottom:16px;"><span class="alert-ico">ℹ</span>'
-      +'Enter your marks per component. <strong style="color:var(--amber2);">Sessional max 40 · Midterm max 20 · Final max 40.</strong>'
-      +' These are personal estimates — official results are posted by your teacher.</div>'
-      +'<div class="tbl-wrap" style="overflow-x:auto;"><table style="min-width:620px;">'
-      +'<thead><tr><th>Course</th><th>Code</th><th>Instructor</th>'
-      +'<th style="color:#f5c060;">Sessional /40</th>'
-      +'<th style="color:#7db8e0;">Midterm /20</th>'
-      +'<th style="color:#7ecbb8;">Final /40</th>'
-      +'<th>Total /100</th><th>Grade (Est.)</th><th>Action</th>'
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
-    return;
-  }
+
 
   // ── MY MARKS (official results) ──
   if(tab==='results'){
@@ -2075,37 +2019,6 @@ function saveStudentContact(sid){
 
 function printTranscript(){window.print();}
 
-// ── STUDENT MARKS ENTRY HELPERS ──
-function previewStudentTotal(cid){
-  const sv=parseFloat(document.getElementById('sm_s_'+cid)?.value)||0;
-  const mv=parseFloat(document.getElementById('sm_m_'+cid)?.value)||0;
-  const fv=parseFloat(document.getElementById('sm_f_'+cid)?.value)||0;
-  const tot=Math.min(sv,40)+Math.min(mv,20)+Math.min(fv,40);
-  const g=calcGrade(tot);
-  const tEl=document.getElementById('sm_tot_'+cid);
-  const gEl=document.getElementById('sm_grade_'+cid);
-  if(tEl){tEl.textContent=tot;tEl.style.color=g.gp>=1?'#7ecbb8':'#e87c6e';}
-  if(gEl){gEl.textContent=g.grade;gEl.style.color=g.gp>=1?'#7ecbb8':'#e87c6e';}
-}
-
-function saveStudentMarks(sid,cid){
-  const sv=document.getElementById('sm_s_'+cid)?.value;
-  const mv=document.getElementById('sm_m_'+cid)?.value;
-  const fv=document.getElementById('sm_f_'+cid)?.value;
-  if(sv===''||mv===''||fv===''){toast('Enter all three marks before saving.','warn');return;}
-  if(!window.studentMarks)window.studentMarks={};
-  window.studentMarks[sid+'_'+cid]={s:parseFloat(sv),m:parseFloat(mv),f:parseFloat(fv)};
-  toast('Marks saved locally!','ok');
-  // Re-render tab to show clear button and updated total
-  renderPTab('marks-entry');
-}
-
-function clearStudentMarks(sid,cid){
-  if(!window.studentMarks)return;
-  delete window.studentMarks[sid+'_'+cid];
-  toast('Marks cleared.','warn');
-  renderPTab('marks-entry');
-}
 function renderSelfEnroll(orderedList){
   const q=(document.getElementById('selfSearch')?.value||'').toLowerCase();
   const d=document.getElementById('selfDept')?.value||'';
@@ -3362,6 +3275,220 @@ function importExamResults(input){
 }
 
 // ══════════════════════════════════════
+// LOCALSTORAGE PERSISTENCE
+// All data auto-saves to browser storage
+// ══════════════════════════════════════
+const DB_KEY = 'dsu_portal_v1';
+const COURSES_KEY = 'dsu_courses_v1'; // courses saved separately (large)
+
+// Save all mutable state to localStorage
+function saveToStorage(){
+  try{
+    const state={
+      students,
+      enrollments,
+      examResults,
+      teachers,
+      sessions,
+      studyPlans,
+      adminOverrides,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(DB_KEY, JSON.stringify(state));
+    // Save course enrolled counts (not full courses — those are code-defined)
+    const enrolledMap={};
+    courses.forEach(c=>{ enrolledMap[c.id]=c.enrolled; });
+    localStorage.setItem(COURSES_KEY, JSON.stringify(enrolledMap));
+  }catch(e){
+    console.warn('DSU: localStorage save failed', e);
+  }
+}
+
+// Load saved state from localStorage, return true if data found
+function loadFromStorage(){
+  try{
+    const raw=localStorage.getItem(DB_KEY);
+    if(!raw) return false;
+    const state=JSON.parse(raw);
+    if(!state||!state.students) return false;
+
+    // Restore all arrays
+    students.length=0;   state.students.forEach(x=>students.push(x));
+    enrollments.length=0; state.enrollments.forEach(x=>enrollments.push(x));
+    examResults.length=0; state.examResults.forEach(x=>examResults.push(x));
+    teachers.length=0;    state.teachers.forEach(x=>teachers.push(x));
+    sessions.length=0;    state.sessions.forEach(x=>sessions.push(x));
+    studyPlans.length=0;  state.studyPlans.forEach(x=>studyPlans.push(x));
+    adminOverrides.length=0; (state.adminOverrides||[]).forEach(x=>adminOverrides.push(x));
+
+    // Restore enrolled counts on courses
+    const enrolledMap=JSON.parse(localStorage.getItem(COURSES_KEY)||'{}');
+    courses.forEach(c=>{ if(enrolledMap[c.id]!==undefined) c.enrolled=enrolledMap[c.id]; });
+
+    return true;
+  }catch(e){
+    console.warn('DSU: localStorage load failed', e);
+    return false;
+  }
+}
+
+// Clear all saved data and reload fresh demo data
+function clearStorage(){
+  if(!confirm('Reset ALL data to demo defaults? This cannot be undone.')) return;
+  localStorage.removeItem(DB_KEY);
+  localStorage.removeItem(COURSES_KEY);
+  toast('Data cleared — reloading…','warn');
+  setTimeout(()=>location.reload(), 1200);
+}
+
+// Show save status badge in nav
+function updateSaveBadge(){
+  const el=document.getElementById('saveBadge');
+  if(!el) return;
+  const raw=localStorage.getItem(DB_KEY);
+  if(raw){
+    try{
+      const d=JSON.parse(raw);
+      const t=new Date(d.savedAt);
+      const str=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      el.textContent='💾 Saved '+str;
+      el.style.color='var(--sage2)';
+    }catch(e){ el.textContent='💾 Saved'; }
+  } else {
+    el.textContent='Not saved';
+    el.style.color='var(--tx3)';
+  }
+}
+
+// Auto-save after any data mutation
+// Patch the key mutation functions to auto-save
+const _origDoEnroll = doEnroll;
+window.doEnroll = function(sid,cid){
+  _origDoEnroll(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoDrop = doDrop;
+window.doDrop = function(cid){
+  _origDoDrop(cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoMarkComplete = doMarkComplete;
+window.doMarkComplete = function(sid,cid){
+  _origDoMarkComplete(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoDropAdmin = doDropAdmin;
+window.doDropAdmin = function(sid,cid){
+  _origDoDropAdmin(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveResult = saveResult;
+window.saveResult = function(){
+  _origSaveResult();
+  saveToStorage(); updateSaveBadge();
+};
+const _origTeacherPostResult = teacherPostResult;
+window.teacherPostResult = function(sid,cid){
+  _origTeacherPostResult(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveTeacher = saveTeacher;
+window.saveTeacher = function(){
+  _origSaveTeacher();
+  saveToStorage(); updateSaveBadge();
+};
+const _origDeleteTeacher = deleteTeacher;
+window.deleteTeacher = function(tid){
+  _origDeleteTeacher(tid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveSession = saveSession;
+window.saveSession = function(){
+  _origSaveSession();
+  saveToStorage(); updateSaveBadge();
+};
+const _origDeleteSession = deleteSession;
+window.deleteSession = function(sid){
+  _origDeleteSession(sid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSavePlan = savePlan;
+window.savePlan = function(){
+  _origSavePlan();
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveCourse = saveCourse;
+window.saveCourse = function(){
+  _origSaveCourse();
+  saveToStorage(); updateSaveBadge();
+};
+const _origDelCourse = delCourse;
+window.delCourse = function(cid){
+  _origDelCourse(cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origGrantLoadOverride = grantLoadOverride;
+window.grantLoadOverride = function(){
+  _origGrantLoadOverride();
+  saveToStorage(); updateSaveBadge();
+};
+const _origGrantCourseOverride = grantCourseOverride;
+window.grantCourseOverride = function(){
+  _origGrantCourseOverride();
+  saveToStorage(); updateSaveBadge();
+};
+const _origRevokeOverride = revokeOverride;
+window.revokeOverride = function(i){
+  _origRevokeOverride(i);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoRegister = doRegister;
+window.doRegister = function(){
+  _origDoRegister();
+  saveToStorage(); updateSaveBadge();
+};
+const _origUploadStudentPhoto = uploadStudentPhoto;
+window.uploadStudentPhoto = function(sid,input){
+  _origUploadStudentPhoto(sid,input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 500);
+};
+const _origUploadFacultyPhotoAdmin = uploadFacultyPhotoAdmin;
+window.uploadFacultyPhotoAdmin = function(input){
+  _origUploadFacultyPhotoAdmin(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 500);
+};
+const _origSaveStudentContact = saveStudentContact;
+window.saveStudentContact = function(sid){
+  _origSaveStudentContact(sid);
+  saveToStorage(); updateSaveBadge();
+};
+// Also save after Excel imports
+const _origImportCoursesExcel = importCoursesExcel;
+window.importCoursesExcel = function(input){
+  _origImportCoursesExcel(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+const _origImportFacultyExcel = importFacultyExcel;
+window.importFacultyExcel = function(input){
+  _origImportFacultyExcel(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+const _origImportPlanExcel = importPlanExcel;
+window.importPlanExcel = function(input){
+  _origImportPlanExcel(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+const _origImportExamResults = importExamResults;
+window.importExamResults = function(input){
+  _origImportExamResults(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+
+// Init: try to load saved data, fall back to demo data
+updateSaveBadge();
+
+
+// ══════════════════════════════════════
 // INIT — demo data
 // ══════════════════════════════════════
 (function(){
@@ -3925,219 +4052,6 @@ window.goPage=function(name,btn){
   }
   _baseGoPage(name,btn);
 };
-
-// ══════════════════════════════════════
-// LOCALSTORAGE PERSISTENCE
-// All data auto-saves to browser storage
-// ══════════════════════════════════════
-const DB_KEY = 'dsu_portal_v1';
-const COURSES_KEY = 'dsu_courses_v1'; // courses saved separately (large)
-
-// Save all mutable state to localStorage
-function saveToStorage(){
-  try{
-    const state={
-      students,
-      enrollments,
-      examResults,
-      teachers,
-      sessions,
-      studyPlans,
-      adminOverrides,
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem(DB_KEY, JSON.stringify(state));
-    // Save course enrolled counts (not full courses — those are code-defined)
-    const enrolledMap={};
-    courses.forEach(c=>{ enrolledMap[c.id]=c.enrolled; });
-    localStorage.setItem(COURSES_KEY, JSON.stringify(enrolledMap));
-  }catch(e){
-    console.warn('DSU: localStorage save failed', e);
-  }
-}
-
-// Load saved state from localStorage, return true if data found
-function loadFromStorage(){
-  try{
-    const raw=localStorage.getItem(DB_KEY);
-    if(!raw) return false;
-    const state=JSON.parse(raw);
-    if(!state||!state.students) return false;
-
-    // Restore all arrays
-    students.length=0;   state.students.forEach(x=>students.push(x));
-    enrollments.length=0; state.enrollments.forEach(x=>enrollments.push(x));
-    examResults.length=0; state.examResults.forEach(x=>examResults.push(x));
-    teachers.length=0;    state.teachers.forEach(x=>teachers.push(x));
-    sessions.length=0;    state.sessions.forEach(x=>sessions.push(x));
-    studyPlans.length=0;  state.studyPlans.forEach(x=>studyPlans.push(x));
-    adminOverrides.length=0; (state.adminOverrides||[]).forEach(x=>adminOverrides.push(x));
-
-    // Restore enrolled counts on courses
-    const enrolledMap=JSON.parse(localStorage.getItem(COURSES_KEY)||'{}');
-    courses.forEach(c=>{ if(enrolledMap[c.id]!==undefined) c.enrolled=enrolledMap[c.id]; });
-
-    return true;
-  }catch(e){
-    console.warn('DSU: localStorage load failed', e);
-    return false;
-  }
-}
-
-// Clear all saved data and reload fresh demo data
-function clearStorage(){
-  if(!confirm('Reset ALL data to demo defaults? This cannot be undone.')) return;
-  localStorage.removeItem(DB_KEY);
-  localStorage.removeItem(COURSES_KEY);
-  toast('Data cleared — reloading…','warn');
-  setTimeout(()=>location.reload(), 1200);
-}
-
-// Show save status badge in nav
-function updateSaveBadge(){
-  const el=document.getElementById('saveBadge');
-  if(!el) return;
-  const raw=localStorage.getItem(DB_KEY);
-  if(raw){
-    try{
-      const d=JSON.parse(raw);
-      const t=new Date(d.savedAt);
-      const str=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-      el.textContent='💾 Saved '+str;
-      el.style.color='var(--sage2)';
-    }catch(e){ el.textContent='💾 Saved'; }
-  } else {
-    el.textContent='Not saved';
-    el.style.color='var(--tx3)';
-  }
-}
-
-// Auto-save after any data mutation
-// Patch the key mutation functions to auto-save
-const _origDoEnroll = doEnroll;
-window.doEnroll = function(sid,cid){
-  _origDoEnroll(sid,cid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origDoDrop = doDrop;
-window.doDrop = function(cid){
-  _origDoDrop(cid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origDoMarkComplete = doMarkComplete;
-window.doMarkComplete = function(sid,cid){
-  _origDoMarkComplete(sid,cid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origDoDropAdmin = doDropAdmin;
-window.doDropAdmin = function(sid,cid){
-  _origDoDropAdmin(sid,cid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origSaveResult = saveResult;
-window.saveResult = function(){
-  _origSaveResult();
-  saveToStorage(); updateSaveBadge();
-};
-const _origTeacherPostResult = teacherPostResult;
-window.teacherPostResult = function(sid,cid){
-  _origTeacherPostResult(sid,cid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origSaveTeacher = saveTeacher;
-window.saveTeacher = function(){
-  _origSaveTeacher();
-  saveToStorage(); updateSaveBadge();
-};
-const _origDeleteTeacher = deleteTeacher;
-window.deleteTeacher = function(tid){
-  _origDeleteTeacher(tid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origSaveSession = saveSession;
-window.saveSession = function(){
-  _origSaveSession();
-  saveToStorage(); updateSaveBadge();
-};
-const _origDeleteSession = deleteSession;
-window.deleteSession = function(sid){
-  _origDeleteSession(sid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origSavePlan = savePlan;
-window.savePlan = function(){
-  _origSavePlan();
-  saveToStorage(); updateSaveBadge();
-};
-const _origSaveCourse = saveCourse;
-window.saveCourse = function(){
-  _origSaveCourse();
-  saveToStorage(); updateSaveBadge();
-};
-const _origDelCourse = delCourse;
-window.delCourse = function(cid){
-  _origDelCourse(cid);
-  saveToStorage(); updateSaveBadge();
-};
-const _origGrantLoadOverride = grantLoadOverride;
-window.grantLoadOverride = function(){
-  _origGrantLoadOverride();
-  saveToStorage(); updateSaveBadge();
-};
-const _origGrantCourseOverride = grantCourseOverride;
-window.grantCourseOverride = function(){
-  _origGrantCourseOverride();
-  saveToStorage(); updateSaveBadge();
-};
-const _origRevokeOverride = revokeOverride;
-window.revokeOverride = function(i){
-  _origRevokeOverride(i);
-  saveToStorage(); updateSaveBadge();
-};
-const _origDoRegister = doRegister;
-window.doRegister = function(){
-  _origDoRegister();
-  saveToStorage(); updateSaveBadge();
-};
-const _origUploadStudentPhoto = uploadStudentPhoto;
-window.uploadStudentPhoto = function(sid,input){
-  _origUploadStudentPhoto(sid,input);
-  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 500);
-};
-const _origUploadFacultyPhotoAdmin = uploadFacultyPhotoAdmin;
-window.uploadFacultyPhotoAdmin = function(input){
-  _origUploadFacultyPhotoAdmin(input);
-  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 500);
-};
-const _origSaveStudentContact = saveStudentContact;
-window.saveStudentContact = function(sid){
-  _origSaveStudentContact(sid);
-  saveToStorage(); updateSaveBadge();
-};
-// Also save after Excel imports
-const _origImportCoursesExcel = importCoursesExcel;
-window.importCoursesExcel = function(input){
-  _origImportCoursesExcel(input);
-  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
-};
-const _origImportFacultyExcel = importFacultyExcel;
-window.importFacultyExcel = function(input){
-  _origImportFacultyExcel(input);
-  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
-};
-const _origImportPlanExcel = importPlanExcel;
-window.importPlanExcel = function(input){
-  _origImportPlanExcel(input);
-  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
-};
-const _origImportExamResults = importExamResults;
-window.importExamResults = function(input){
-  _origImportExamResults(input);
-  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
-};
-
-// Init: try to load saved data, fall back to demo data
-updateSaveBadge();
 
 </script>
 </body>
