@@ -1,10 +1,12 @@
-[index.html.html](https://github.com/user-attachments/files/26129854/index.html.html)[Uploading index<!DOCTYPE html>
+[Index.html.html](https://github.com/user-attachments/files/26139746/Index.html.html)
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>DHA Suffa University — Enrollment Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -444,6 +446,8 @@ body.role-admin .nav-admin{display:inline-flex;}
         <span class="nav-av-name" id="navName">Guest</span>
       </div>
       <button class="btn btn-dark" style="padding:5px 12px;font-size:12px;" onclick="doLogout()">Sign Out</button>
+      <span id="saveBadge" style="font-size:10px;color:var(--tx3);white-space:nowrap;padding:0 4px;">Not saved</span>
+      <button class="btn btn-dark" style="padding:4px 10px;font-size:11px;color:#e87c6e;" onclick="clearStorage()" title="Reset all data to demo defaults">🗑 Reset</button>
     </div>
   </div>
 </nav>
@@ -668,6 +672,7 @@ body.role-admin .nav-admin{display:inline-flex;}
       <button class="i-tab" onclick="showATab('overrides',this)">Overrides</button>
       <button class="i-tab" onclick="showATab('plans',this)">Plans of Study</button>
       <button class="i-tab" onclick="showATab('courses',this)">Manage Courses</button>
+      <button class="i-tab" onclick="showATab('imports',this)">📥 Import / Export</button>
     </div>
     <div id="at-students">
       <div class="sec-hdr">
@@ -772,6 +777,113 @@ body.role-admin .nav-admin{display:inline-flex;}
         <thead><tr><th>Code</th><th>Title</th><th>Dept</th><th>Credits</th><th>Seats</th><th>Prerequisites</th><th>Actions</th></tr></thead>
         <tbody id="acrs-body"></tbody>
       </table></div>
+    </div>
+
+    <!-- ══ IMPORT / EXPORT TAB ══ -->
+    <div id="at-imports" style="display:none;">
+      <div class="sec-hdr"><div><div class="sec-title">Import & Export</div><div class="sec-sub">Upload Excel files to import data, or download templates and result sheets</div></div></div>
+
+      <!-- ── 1. COURSE EXCEL UPLOAD ── -->
+      <div class="form-shell" style="margin-bottom:24px;">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:6px;">📊 Upload Courses from Excel</div>
+        <div class="alert alert-i" style="margin-bottom:14px;"><span class="alert-ico">ℹ</span>
+          Upload an Excel (.xlsx) file with columns: <strong>Code, Title, Department, Level, Credits, Seats, Instructor, Description, Prerequisites</strong>.
+          Uploaded courses are automatically added to the course catalogue and offered in an auto-created Academic Session.
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label class="btn btn-sage btn-sm" style="cursor:pointer;">
+            📂 Choose Excel File
+            <input type="file" id="excelCourseInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importCoursesExcel(this)"/>
+          </label>
+          <button class="btn btn-dark btn-sm" onclick="downloadCourseTemplate()">⬇ Download Template</button>
+        </div>
+        <div id="excelCourseResult" style="margin-top:14px;"></div>
+      </div>
+
+      <!-- ── 2. FACULTY LIST EXCEL UPLOAD ── -->
+      <div class="form-shell" style="margin-bottom:24px;">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:6px;">👨‍🏫 Upload Faculty List from Excel</div>
+        <div class="alert alert-i" style="margin-bottom:14px;"><span class="alert-ico">ℹ</span>
+          Upload an Excel file with columns: <strong>Title, Name, Department, Rank, Specialisation, Email, Phone, Qualification, Courses</strong>.
+          Existing faculty (matched by Email) will be updated; new records will be added.
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label class="btn btn-sage btn-sm" style="cursor:pointer;">
+            📂 Choose Excel File
+            <input type="file" id="excelFacultyInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importFacultyExcel(this)"/>
+          </label>
+          <button class="btn btn-dark btn-sm" onclick="downloadFacultyTemplate()">⬇ Download Template</button>
+        </div>
+        <div id="excelFacultyResult" style="margin-top:14px;"></div>
+      </div>
+
+      <!-- ── 3. FACULTY PHOTO UPLOAD ── -->
+      <div class="form-shell" style="margin-bottom:24px;">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:6px;">📷 Upload Faculty Photos</div>
+        <div class="alert alert-i" style="margin-bottom:14px;"><span class="alert-ico">ℹ</span>
+          Select a faculty member and upload their photo (JPG/PNG, max 2MB).
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg" style="min-width:260px;"><label>Select Faculty</label>
+            <select id="photoFacultySelect"><option value="">— choose faculty —</option></select>
+          </div>
+          <label class="btn btn-amber btn-sm" style="cursor:pointer;">
+            📷 Upload Photo
+            <input type="file" id="facultyPhotoInput" accept="image/*" style="display:none;" onchange="uploadFacultyPhotoAdmin(this)"/>
+          </label>
+        </div>
+        <div id="facultyPhotoPreviewWrap" style="margin-top:14px;display:none;">
+          <img id="facultyPhotoPreviewImg" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--amber);"/>
+          <span style="font-size:12px;color:var(--tx2);margin-left:12px;vertical-align:middle;">Photo updated ✓</span>
+        </div>
+      </div>
+
+      <!-- ── 4. PLAN OF STUDY EXCEL UPLOAD ── -->
+      <div class="form-shell" style="margin-bottom:24px;">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:6px;">🗓 Upload Plan of Study from Excel</div>
+        <div class="alert alert-i" style="margin-bottom:14px;"><span class="alert-ico">ℹ</span>
+          Upload an Excel file with columns: <strong>PlanID, PlanName, Department, Program, TotalCredits, Semester, CourseIDs</strong>.
+          CourseIDs should be comma-separated within a cell (e.g. <em>MGT101,ACC101,FIN201</em>).
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label class="btn btn-sage btn-sm" style="cursor:pointer;">
+            📂 Choose Excel File
+            <input type="file" id="excelPlanInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importPlanExcel(this)"/>
+          </label>
+          <button class="btn btn-dark btn-sm" onclick="downloadPlanTemplate()">⬇ Download Template</button>
+        </div>
+        <div id="excelPlanResult" style="margin-top:14px;"></div>
+      </div>
+
+      <!-- ── 5. EXAM SHEET DOWNLOAD / RESULT UPLOAD ── -->
+      <div class="form-shell" style="margin-bottom:24px;">
+        <div style="font-family:var(--fh);font-size:20px;font-weight:700;margin-bottom:6px;">📋 Exam Sheet — Download & Upload Results</div>
+        <div class="alert alert-i" style="margin-bottom:14px;"><span class="alert-ico">ℹ</span>
+          Download a blank exam sheet for any course, fill in Sessional/Midterm/Final marks in Excel, then upload to post all results at once.
+        </div>
+        <div style="display:grid;gap:20px;grid-template-columns:1fr 1fr;">
+          <!-- Download -->
+          <div>
+            <div style="font-weight:600;margin-bottom:10px;color:var(--tx2);">⬇ Download Blank Sheet</div>
+            <div class="fg" style="margin-bottom:10px;"><label>Select Course</label>
+              <select id="examSheetCourse"><option value="">— choose course —</option></select>
+            </div>
+            <button class="btn btn-amber btn-sm" onclick="downloadExamSheet()">⬇ Download Exam Sheet</button>
+          </div>
+          <!-- Upload -->
+          <div>
+            <div style="font-weight:600;margin-bottom:10px;color:var(--tx2);">⬆ Upload Filled Results</div>
+            <div class="alert alert-w" style="margin-bottom:10px;font-size:11px;padding:8px 12px;"><span class="alert-ico">⚠</span>
+              Columns required: <strong>StudentID, Sessional, Midterm, Final</strong>. Do not change the CourseID row.
+            </div>
+            <label class="btn btn-sage btn-sm" style="cursor:pointer;">
+              📂 Upload Results Excel
+              <input type="file" id="examResultUpload" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importExamResults(this)"/>
+            </label>
+            <div id="examResultUploadStatus" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1094,7 +1206,7 @@ function goPage(name,btn){
 
 function initAdminPage(){
   // Reset to Students tab as active
-  ['students','enrollments','results','overrides','plans','courses'].forEach(x=>{
+  ['students','enrollments','results','overrides','plans','courses','imports'].forEach(x=>{
     const el=document.getElementById('at-'+x);
     if(el)el.style.display='none';
   });
@@ -1124,7 +1236,7 @@ function showETab(t,btn){
   if(t==='pick')populateStuSel();
 }
 function showATab(t,btn){
-  ['students','enrollments','results','overrides','plans','courses'].forEach(x=>{
+  ['students','enrollments','results','overrides','plans','courses','imports'].forEach(x=>{
     const el=document.getElementById('at-'+x);
     if(el)el.style.display='none';
   });
@@ -1132,13 +1244,13 @@ function showATab(t,btn){
   if(target)target.style.display='';
   document.querySelectorAll('#page-admin .i-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  // Render data for the activated tab
   if(t==='students')renderAdminStu();
   if(t==='enrollments')renderAdminEnr();
   if(t==='results'){populateResStuSel();document.getElementById('resStudentBanner').style.display='none';document.getElementById('resTableWrap').style.display='none';}
   if(t==='overrides')initOverridesTab();
   if(t==='plans')renderAdminPlans();
   if(t==='courses')renderAdminCrs();
+  if(t==='imports')initImportsTab();
 }
 function showPTab(t,btn){
   ['enrolled','enroll-self','marks-entry','results','completed','plan','transcript','progress','contact'].forEach(x=>{const e=document.getElementById('pt-'+x);if(e)e.style.display='none';});
@@ -2962,10 +3074,314 @@ function renderProgram(key){
     </div>`;
 }
 
+
+// ══════════════════════════════════════
+// IMPORT / EXPORT FUNCTIONS
+// ══════════════════════════════════════
+
+function initImportsTab(){
+  // Populate faculty photo selector
+  const sel=document.getElementById('photoFacultySelect');
+  if(sel){
+    sel.innerHTML='<option value="">— choose faculty —</option>'+teachers.map(t=>`<option value="${t.id}">${t.title} ${t.name}</option>`).join('');
+  }
+  // Populate exam sheet course selector
+  const csel=document.getElementById('examSheetCourse');
+  if(csel){
+    csel.innerHTML='<option value="">— choose course —</option>'+courses.map(c=>`<option value="${c.id}">${c.id} — ${c.title}</option>`).join('');
+  }
+}
+
+// ─ Helpers ─
+function readExcel(file,cb){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{defval:''});
+      cb(null,data);
+    }catch(err){cb(err,null);}
+  };
+  reader.readAsBinaryString(file);
+}
+function showImportResult(elId,msg,type){
+  const el=document.getElementById(elId);if(!el)return;
+  const color=type==='ok'?'#7ecbb8':type==='warn'?'#f5c060':'#e87c6e';
+  const bg=type==='ok'?'rgba(58,122,106,.12)':type==='warn'?'rgba(200,132,42,.12)':'rgba(192,57,43,.12)';
+  el.innerHTML=`<div style="padding:10px 14px;border-radius:8px;border:1px solid ${color}33;background:${bg};color:${color};font-size:13px;">${msg}</div>`;
+}
+function makeCSV(headers,rows){
+  const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
+  return [headers.map(esc).join(','),...rows.map(r=>headers.map(h=>esc(r[h]||'')).join(','))].join('\r\n');
+}
+function downloadFile(content,filename,mime){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download=filename;a.click();
+}
+function downloadXLSX(headers,rows,filename){
+  const ws=XLSX.utils.json_to_sheet(rows.length?rows:[Object.fromEntries(headers.map(h=>[h,h==='CourseID'?'Paste course ID here':h==='Semester'?1:h==='Credits'?3:h==='Seats'?30:'']))]);
+  XLSX.utils.sheet_add_aoa(ws,[headers],{origin:'A1'});
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  XLSX.writeFile(wb,filename);
+}
+
+// ── 1. IMPORT COURSES FROM EXCEL ──
+function importCoursesExcel(input){
+  const file=input.files[0];if(!file)return;
+  readExcel(file,(err,data)=>{
+    input.value='';
+    if(err){showImportResult('excelCourseResult','❌ Could not read file: '+err.message,'err');return;}
+    if(!data||!data.length){showImportResult('excelCourseResult','⚠ File is empty or unreadable.','warn');return;}
+    let added=0,updated=0,skipped=0;
+    const sessionCids=[];
+    data.forEach(row=>{
+      const code=(row.Code||row.code||row.CODE||'').toString().trim().toUpperCase();
+      const title=(row.Title||row.title||row.TITLE||'').toString().trim();
+      if(!code||!title){skipped++;return;}
+      const credits=parseInt(row.Credits||row.credits||3)||3;
+      const seats=parseInt(row.Seats||row.seats||30)||30;
+      const level=parseInt(row.Level||row.level||100)||100;
+      const dept=(row.Department||row.Dept||row.dept||'Management Sciences').toString().trim();
+      const instructor=(row.Instructor||row.instructor||'TBA').toString().trim();
+      const desc=(row.Description||row.Desc||row.desc||'').toString().trim();
+      const prereqStr=(row.Prerequisites||row.Prereqs||row.prereqs||'').toString().trim();
+      const prereqs=prereqStr?prereqStr.split(/[,;]+/).map(p=>p.trim()).filter(Boolean):[];
+      const tags=[dept.split(' ')[0]];
+      const existing=courses.findIndex(c=>c.id===code);
+      if(existing>=0){
+        courses[existing]={...courses[existing],title,dept,level,credits,instructor,desc,prereqs,tags,seats};
+        updated++;
+      } else {
+        courses.push({id:code,title,dept,level,credits,instructor,desc,prereqs,tags,seats,enrolled:0});
+        added++;
+      }
+      sessionCids.push(code);
+    });
+    // Auto-create Academic Session with uploaded courses
+    if(sessionCids.length){
+      const now=new Date();
+      const sessId='SES_IMPORT_'+Date.now();
+      const sessTitle=`Excel Import — ${file.name.replace('.xlsx','').replace('.xls','').replace('.csv','')} (${now.toLocaleDateString()})`;
+      sessions.push({id:sessId,title:sessTitle,year:String(now.getFullYear()),term:'Fall',semNo:1,program:'',startDate:'',endDate:'',courseIds:sessionCids,teacherIds:[],status:'active'});
+    }
+    renderAdminCrs();renderCourses();renderHome();renderSessions();
+    showImportResult('excelCourseResult',`✓ Import complete — <strong>${added}</strong> added, <strong>${updated}</strong> updated, <strong>${skipped}</strong> skipped. <strong>${sessionCids.length}</strong> courses added to a new Academic Session automatically.`,'ok');
+  });
+}
+function downloadCourseTemplate(){
+  const headers=['Code','Title','Department','Level','Credits','Seats','Instructor','Description','Prerequisites'];
+  const sample=[{Code:'MGT501',Title:'Advanced Management',Department:'Management Sciences',Level:500,Credits:3,Seats:30,Instructor:'Dr. Name',Description:'Course description here',Prerequisites:'MGT401'}];
+  downloadXLSX(headers,sample,'DSU_Course_Template.xlsx');
+  toast('Course template downloaded!','ok');
+}
+
+// ── 2. IMPORT FACULTY FROM EXCEL ──
+function importFacultyExcel(input){
+  const file=input.files[0];if(!file)return;
+  readExcel(file,(err,data)=>{
+    input.value='';
+    if(err){showImportResult('excelFacultyResult','❌ '+err.message,'err');return;}
+    if(!data||!data.length){showImportResult('excelFacultyResult','⚠ File is empty.','warn');return;}
+    let added=0,updated=0,skipped=0;
+    data.forEach(row=>{
+      const name=(row.Name||row.name||'').toString().trim();
+      const email=(row.Email||row.email||'').toString().trim().toLowerCase();
+      const dept=(row.Department||row.Dept||row.dept||'').toString().trim();
+      if(!name||!dept){skipped++;return;}
+      const courseStr=(row.Courses||row.courses||'').toString().trim();
+      const courseIds=courseStr?courseStr.split(/[,;]+/).map(c=>c.trim().toUpperCase()).filter(Boolean):[];
+      const obj={
+        id:email||'TCH_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+        title:(row.Title||row.title||'Dr.').toString().trim(),
+        name,dept,
+        rank:(row.Rank||row.rank||'Lecturer').toString().trim(),
+        specialisation:(row.Specialisation||row.Specialization||row.spec||'').toString().trim(),
+        email,
+        phone:(row.Phone||row.phone||'').toString().trim(),
+        qualification:(row.Qualification||row.qual||'').toString().trim(),
+        courseIds,photo:null
+      };
+      const existing=email?teachers.findIndex(t=>t.email===email):-1;
+      if(existing>=0){teachers[existing]={...teachers[existing],...obj,photo:teachers[existing].photo};updated++;}
+      else{teachers.push(obj);added++;}
+    });
+    renderTeachers();
+    showImportResult('excelFacultyResult',`✓ Faculty import complete — <strong>${added}</strong> added, <strong>${updated}</strong> updated, <strong>${skipped}</strong> skipped.`,'ok');
+    initImportsTab();
+  });
+}
+function downloadFacultyTemplate(){
+  const headers=['Title','Name','Department','Rank','Specialisation','Email','Phone','Qualification','Courses'];
+  const sample=[{Title:'Dr.',Name:'Ahmad Khan',Department:'Management Sciences',Rank:'Associate Professor',Specialisation:'Finance',Email:'ahmad.khan@dsu.edu.pk',Phone:'+92 300 1234567',Qualification:'PhD Finance — IBA Karachi',Courses:'FIN201,FIN301'}];
+  downloadXLSX(headers,sample,'DSU_Faculty_Template.xlsx');
+  toast('Faculty template downloaded!','ok');
+}
+
+// ── 3. FACULTY PHOTO UPLOAD (admin) ──
+function uploadFacultyPhotoAdmin(input){
+  const file=input.files[0];if(!file)return;
+  const tid=document.getElementById('photoFacultySelect').value;
+  if(!tid){toast('Select a faculty member first.','warn');input.value='';return;}
+  if(file.size>2*1024*1024){toast('Image must be under 2MB.','warn');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const t=teachers.find(x=>x.id===tid);
+    if(!t){toast('Faculty not found.','err');return;}
+    t.photo=e.target.result;
+    const wrap=document.getElementById('facultyPhotoPreviewWrap');
+    const img=document.getElementById('facultyPhotoPreviewImg');
+    if(img)img.src=e.target.result;
+    if(wrap)wrap.style.display='flex';
+    toast(t.title+' '+t.name+' photo updated!','ok');
+    renderTeachers();
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+// ── 4. IMPORT PLAN OF STUDY FROM EXCEL ──
+function importPlanExcel(input){
+  const file=input.files[0];if(!file)return;
+  readExcel(file,(err,data)=>{
+    input.value='';
+    if(err){showImportResult('excelPlanResult','❌ '+err.message,'err');return;}
+    if(!data||!data.length){showImportResult('excelPlanResult','⚠ File is empty.','warn');return;}
+    // Group rows by PlanID → semesters
+    const planMap={};
+    data.forEach(row=>{
+      const pid=(row.PlanID||row.planId||row.planid||'').toString().trim();
+      const name=(row.PlanName||row.planName||row.name||pid).toString().trim();
+      const dept=(row.Department||row.Dept||'Management Sciences').toString().trim();
+      const prog=(row.Program||row.program||'').toString().trim();
+      const totalCr=parseInt(row.TotalCredits||row.totalCredits||135)||135;
+      const semLabel=(row.Semester||row.semester||'').toString().trim();
+      const cidsStr=(row.CourseIDs||row.courseIds||row.courses||'').toString().trim();
+      const cids=cidsStr?cidsStr.split(/[,;]+/).map(c=>c.trim().toUpperCase()).filter(Boolean):[];
+      if(!pid)return;
+      if(!planMap[pid])planMap[pid]={id:pid,name,dept,program:prog,totalCredits:totalCr,semesters:[]};
+      if(semLabel&&cids.length)planMap[pid].semesters.push({label:semLabel,courseIds:cids});
+    });
+    let added=0,updated=0;
+    Object.values(planMap).forEach(p=>{
+      const existing=studyPlans.findIndex(x=>x.id===p.id);
+      if(existing>=0){studyPlans[existing]=p;updated++;}
+      else{studyPlans.push(p);added++;}
+    });
+    renderAdminPlans();
+    showImportResult('excelPlanResult',`✓ Plan import complete — <strong>${added}</strong> new plans added, <strong>${updated}</strong> updated.`,'ok');
+  });
+}
+function downloadPlanTemplate(){
+  const headers=['PlanID','PlanName','Department','Program','TotalCredits','Semester','CourseIDs'];
+  const sample=[
+    {PlanID:'PLN_SAMPLE',PlanName:'Sample 4-Year Plan',Department:'Management Sciences',Program:'BBA — Business Administration (4-Year)',TotalCredits:135,Semester:'Semester 1',CourseIDs:'GEN101,GEN102,ENG001,IT101,ECON101,MGT101'},
+    {PlanID:'PLN_SAMPLE',PlanName:'Sample 4-Year Plan',Department:'Management Sciences',Program:'BBA — Business Administration (4-Year)',TotalCredits:135,Semester:'Semester 2',CourseIDs:'STAT101,ECON201,BUS101,ACC101,MGT201,MGT202'},
+  ];
+  downloadXLSX(headers,sample,'DSU_PlanOfStudy_Template.xlsx');
+  toast('Plan of Study template downloaded!','ok');
+}
+
+// ── 5. DOWNLOAD EXAM SHEET ──
+function downloadExamSheet(){
+  const cid=document.getElementById('examSheetCourse').value;
+  if(!cid){toast('Select a course first.','warn');return;}
+  const c=courses.find(x=>x.id===cid);if(!c)return;
+  const enrolled=enrollments.filter(e=>e.courseId===cid&&e.status==='active');
+  if(!enrolled.length){toast('No students enrolled in '+cid+'.','warn');return;}
+  // Build rows: one per student
+  const headers=['CourseID','CourseName','StudentID','StudentName','Sessional_Max40','Midterm_Max20','Final_Max40','Total','Grade','Remarks'];
+  const rows=enrolled.map(e=>{
+    const s=students.find(x=>x.id===e.studentId);
+    return {
+      CourseID:cid,
+      CourseName:c.title,
+      StudentID:e.studentId,
+      StudentName:s?s.firstName+' '+s.lastName:'Unknown',
+      Sessional_Max40:'',Midterm_Max20:'',Final_Max40:'',
+      Total:'',Grade:'',Remarks:''
+    };
+  });
+  downloadXLSX(headers,rows,`ExamSheet_${cid}_${new Date().toLocaleDateString().replace(/\//g,'-')}.xlsx`);
+  toast('Exam sheet downloaded for '+cid+' ('+enrolled.length+' students)!','ok');
+}
+
+// ── 5b. UPLOAD FILLED EXAM RESULTS ──
+function importExamResults(input){
+  const file=input.files[0];if(!file)return;
+  readExcel(file,(err,data)=>{
+    input.value='';
+    const statusEl=document.getElementById('examResultUploadStatus');
+    if(err){
+      if(statusEl)statusEl.innerHTML='<div style="color:#e87c6e;font-size:12px;">❌ Could not read file: '+err.message+'</div>';
+      return;
+    }
+    if(!data||!data.length){
+      if(statusEl)statusEl.innerHTML='<div style="color:#f5c060;font-size:12px;">⚠ File is empty or has no data rows.</div>';
+      return;
+    }
+    let posted=0,skipped=0,errors=[];
+    // Get CourseID from first data row
+    const firstRow=data[0];
+    const cid=(firstRow.CourseID||firstRow.courseID||firstRow.courseid||'').toString().trim().toUpperCase();
+    if(!cid){
+      if(statusEl)statusEl.innerHTML='<div style="color:#e87c6e;font-size:12px;">❌ CourseID column not found. Make sure you are uploading an unmodified DSU exam sheet.</div>';
+      return;
+    }
+    data.forEach((row,i)=>{
+      const sid=(row.StudentID||row.studentID||row.studentid||'').toString().trim();
+      const sv=parseFloat(row.Sessional_Max40||row.Sessional||row.sessional||row.S||'');
+      const mv=parseFloat(row.Midterm_Max20||row.Midterm||row.midterm||row.M||'');
+      const fv=parseFloat(row.Final_Max40||row.Final||row.final||row.F||'');
+      if(!sid){skipped++;return;}
+      if(isNaN(sv)||isNaN(mv)||isNaN(fv)){errors.push('Row '+(i+2)+': '+sid+' — missing marks');skipped++;return;}
+      if(sv<0||sv>40){errors.push(sid+': Sessional '+sv+' out of range');skipped++;return;}
+      if(mv<0||mv>20){errors.push(sid+': Midterm '+mv+' out of range');skipped++;return;}
+      if(fv<0||fv>40){errors.push(sid+': Final '+fv+' out of range');skipped++;return;}
+      const total=Math.round((sv+mv+fv)*10)/10;
+      const g=calcGrade(total);
+      const isPassed=g.gp>=1.0;
+      // Remove any previous result for this student-course
+      const prevIdx=examResults.findIndex(r=>r.studentId===sid&&r.courseId===cid);
+      if(prevIdx>=0)examResults.splice(prevIdx,1);
+      examResults.push({studentId:sid,courseId:cid,sessional:sv,midterm:mv,final:fv,total,grade:g.grade,gp:g.gp,status:isPassed?'pass':'fail',date:new Date().toLocaleDateString()});
+      if(isPassed){
+        const idx=enrollments.findIndex(e=>e.studentId===sid&&e.courseId===cid&&e.status==='active');
+        if(idx>-1){enrollments[idx].status='completed';courses.find(x=>x.id===cid).enrolled--;}
+      }
+      posted++;
+    });
+    refreshAll('');
+    let msg=`✓ Results uploaded for <strong>${cid}</strong> — <strong>${posted}</strong> results posted`;
+    if(skipped)msg+=`, <strong>${skipped}</strong> skipped`;
+    if(errors.length)msg+='<br/><span style="color:#f5c060;">Issues: '+errors.slice(0,5).join(', ')+(errors.length>5?' ...':'')+' </span>';
+    if(statusEl)statusEl.innerHTML='<div style="padding:10px 14px;border-radius:8px;border:1px solid rgba(126,203,184,.3);background:rgba(58,122,106,.12);color:#7ecbb8;font-size:13px;">'+msg+'</div>';
+    toast('Results uploaded: '+posted+' records posted for '+cid,'ok');
+  });
+}
+
 // ══════════════════════════════════════
 // INIT — demo data
 // ══════════════════════════════════════
 (function(){
+  // Try loading saved data from localStorage first
+  const hasSaved = (function(){
+    try{ return !!localStorage.getItem('dsu_portal_v1'); }catch(e){ return false; }
+  })();
+
+  if(hasSaved){
+    // Restore from storage — skip demo data entirely
+    const ok = loadFromStorage();
+    if(ok){
+      renderHome(); populateRegCC();
+      setTimeout(()=>{renderProgram('bba');renderProgram('af');renderProgram('bap');},0);
+      return; // exit INIT early
+    }
+  }
+
+  // No saved data — load demo data
   students.push({id:'STU1001',firstName:'Fatima',lastName:'Noor',email:'fatima.noor@dsu.edu.pk',phone:'+92 321 4561001',dob:'2002-03-10',gender:'Female',dept:'Computer Science',program:'BS (4-Year)',completedCourses:['CS101','MATH101'],registeredOn:new Date().toLocaleDateString(),address:'House 12, Block C, DHA Phase 5, Karachi'});
   students.push({id:'STU1002',firstName:'Bilal',lastName:'Ahmed',email:'bilal.ahmed@dsu.edu.pk',phone:'+92 300 7891002',dob:'2001-11-22',gender:'Male',dept:'Management Sciences',program:'BBA — Business Administration (4-Year)',completedCourses:['MGT101'],registeredOn:new Date().toLocaleDateString(),address:'Flat 4B, Clifton Block 2, Karachi'});
   students.push({id:'STU1003',firstName:'Maham',lastName:'Siddiqui',email:'maham.siddiqui@dsu.edu.pk',phone:'+92 312 3451003',dob:'2003-07-18',gender:'Female',dept:'Management Sciences',program:'BS-AF — Accounting & Finance (4-Year)',completedCourses:['MGT101','BUS101'],registeredOn:new Date().toLocaleDateString(),address:'House 45, Street 7, PECHS, Karachi'});
@@ -3155,6 +3571,8 @@ function renderProgram(key){
   populateRegCC();
   // Pre-render programs page
   setTimeout(()=>{renderProgram('bba');renderProgram('af');renderProgram('bap');},0);
+  // Save initial demo data to localStorage
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 300);
 })();
 
 // ══════════════════════════════════════
@@ -3508,7 +3926,220 @@ window.goPage=function(name,btn){
   }
   _baseGoPage(name,btn);
 };
+
+// ══════════════════════════════════════
+// LOCALSTORAGE PERSISTENCE
+// All data auto-saves to browser storage
+// ══════════════════════════════════════
+const DB_KEY = 'dsu_portal_v1';
+const COURSES_KEY = 'dsu_courses_v1'; // courses saved separately (large)
+
+// Save all mutable state to localStorage
+function saveToStorage(){
+  try{
+    const state={
+      students,
+      enrollments,
+      examResults,
+      teachers,
+      sessions,
+      studyPlans,
+      adminOverrides,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(DB_KEY, JSON.stringify(state));
+    // Save course enrolled counts (not full courses — those are code-defined)
+    const enrolledMap={};
+    courses.forEach(c=>{ enrolledMap[c.id]=c.enrolled; });
+    localStorage.setItem(COURSES_KEY, JSON.stringify(enrolledMap));
+  }catch(e){
+    console.warn('DSU: localStorage save failed', e);
+  }
+}
+
+// Load saved state from localStorage, return true if data found
+function loadFromStorage(){
+  try{
+    const raw=localStorage.getItem(DB_KEY);
+    if(!raw) return false;
+    const state=JSON.parse(raw);
+    if(!state||!state.students) return false;
+
+    // Restore all arrays
+    students.length=0;   state.students.forEach(x=>students.push(x));
+    enrollments.length=0; state.enrollments.forEach(x=>enrollments.push(x));
+    examResults.length=0; state.examResults.forEach(x=>examResults.push(x));
+    teachers.length=0;    state.teachers.forEach(x=>teachers.push(x));
+    sessions.length=0;    state.sessions.forEach(x=>sessions.push(x));
+    studyPlans.length=0;  state.studyPlans.forEach(x=>studyPlans.push(x));
+    adminOverrides.length=0; (state.adminOverrides||[]).forEach(x=>adminOverrides.push(x));
+
+    // Restore enrolled counts on courses
+    const enrolledMap=JSON.parse(localStorage.getItem(COURSES_KEY)||'{}');
+    courses.forEach(c=>{ if(enrolledMap[c.id]!==undefined) c.enrolled=enrolledMap[c.id]; });
+
+    return true;
+  }catch(e){
+    console.warn('DSU: localStorage load failed', e);
+    return false;
+  }
+}
+
+// Clear all saved data and reload fresh demo data
+function clearStorage(){
+  if(!confirm('Reset ALL data to demo defaults? This cannot be undone.')) return;
+  localStorage.removeItem(DB_KEY);
+  localStorage.removeItem(COURSES_KEY);
+  toast('Data cleared — reloading…','warn');
+  setTimeout(()=>location.reload(), 1200);
+}
+
+// Show save status badge in nav
+function updateSaveBadge(){
+  const el=document.getElementById('saveBadge');
+  if(!el) return;
+  const raw=localStorage.getItem(DB_KEY);
+  if(raw){
+    try{
+      const d=JSON.parse(raw);
+      const t=new Date(d.savedAt);
+      const str=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      el.textContent='💾 Saved '+str;
+      el.style.color='var(--sage2)';
+    }catch(e){ el.textContent='💾 Saved'; }
+  } else {
+    el.textContent='Not saved';
+    el.style.color='var(--tx3)';
+  }
+}
+
+// Auto-save after any data mutation
+// Patch the key mutation functions to auto-save
+const _origDoEnroll = doEnroll;
+window.doEnroll = function(sid,cid){
+  _origDoEnroll(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoDrop = doDrop;
+window.doDrop = function(cid){
+  _origDoDrop(cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoMarkComplete = doMarkComplete;
+window.doMarkComplete = function(sid,cid){
+  _origDoMarkComplete(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoDropAdmin = doDropAdmin;
+window.doDropAdmin = function(sid,cid){
+  _origDoDropAdmin(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveResult = saveResult;
+window.saveResult = function(){
+  _origSaveResult();
+  saveToStorage(); updateSaveBadge();
+};
+const _origTeacherPostResult = teacherPostResult;
+window.teacherPostResult = function(sid,cid){
+  _origTeacherPostResult(sid,cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveTeacher = saveTeacher;
+window.saveTeacher = function(){
+  _origSaveTeacher();
+  saveToStorage(); updateSaveBadge();
+};
+const _origDeleteTeacher = deleteTeacher;
+window.deleteTeacher = function(tid){
+  _origDeleteTeacher(tid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveSession = saveSession;
+window.saveSession = function(){
+  _origSaveSession();
+  saveToStorage(); updateSaveBadge();
+};
+const _origDeleteSession = deleteSession;
+window.deleteSession = function(sid){
+  _origDeleteSession(sid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origSavePlan = savePlan;
+window.savePlan = function(){
+  _origSavePlan();
+  saveToStorage(); updateSaveBadge();
+};
+const _origSaveCourse = saveCourse;
+window.saveCourse = function(){
+  _origSaveCourse();
+  saveToStorage(); updateSaveBadge();
+};
+const _origDelCourse = delCourse;
+window.delCourse = function(cid){
+  _origDelCourse(cid);
+  saveToStorage(); updateSaveBadge();
+};
+const _origGrantLoadOverride = grantLoadOverride;
+window.grantLoadOverride = function(){
+  _origGrantLoadOverride();
+  saveToStorage(); updateSaveBadge();
+};
+const _origGrantCourseOverride = grantCourseOverride;
+window.grantCourseOverride = function(){
+  _origGrantCourseOverride();
+  saveToStorage(); updateSaveBadge();
+};
+const _origRevokeOverride = revokeOverride;
+window.revokeOverride = function(i){
+  _origRevokeOverride(i);
+  saveToStorage(); updateSaveBadge();
+};
+const _origDoRegister = doRegister;
+window.doRegister = function(){
+  _origDoRegister();
+  saveToStorage(); updateSaveBadge();
+};
+const _origUploadStudentPhoto = uploadStudentPhoto;
+window.uploadStudentPhoto = function(sid,input){
+  _origUploadStudentPhoto(sid,input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 500);
+};
+const _origUploadFacultyPhotoAdmin = uploadFacultyPhotoAdmin;
+window.uploadFacultyPhotoAdmin = function(input){
+  _origUploadFacultyPhotoAdmin(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 500);
+};
+const _origSaveStudentContact = saveStudentContact;
+window.saveStudentContact = function(sid){
+  _origSaveStudentContact(sid);
+  saveToStorage(); updateSaveBadge();
+};
+// Also save after Excel imports
+const _origImportCoursesExcel = importCoursesExcel;
+window.importCoursesExcel = function(input){
+  _origImportCoursesExcel(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+const _origImportFacultyExcel = importFacultyExcel;
+window.importFacultyExcel = function(input){
+  _origImportFacultyExcel(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+const _origImportPlanExcel = importPlanExcel;
+window.importPlanExcel = function(input){
+  _origImportPlanExcel(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+const _origImportExamResults = importExamResults;
+window.importExamResults = function(input){
+  _origImportExamResults(input);
+  setTimeout(()=>{ saveToStorage(); updateSaveBadge(); }, 800);
+};
+
+// Init: try to load saved data, fall back to demo data
+updateSaveBadge();
+
 </script>
 </body>
 </html>
-.html.html…]()
